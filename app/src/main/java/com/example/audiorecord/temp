@@ -1,0 +1,112 @@
+    private void startRecord() {
+        tvSpeak.setText("正在说话");
+        //提交后台任务，执行录音逻辑
+        executorService.submit(new Runnable() {
+            @Override
+            public void run() {
+                //释放之前录音的recorder
+                releaseRecorder();
+                //执行录音逻辑，如果失败 提示用户
+                if (!doStart()) {
+                    recordFail();
+                }
+            }
+        });
+    }
+
+    private void stopRecord() {
+        tvSpeak.setText("按住说话");
+        //提交后台任务，执行停止逻辑
+        executorService.submit(new Runnable() {
+            @Override
+            public void run() {
+                //执行停止录音逻辑，失败就要提醒用户
+                if (!doStop()) {
+                    recordFail();
+                }
+                //释放recorder
+                releaseRecorder();
+
+            }
+        });
+        sendAsw(mAudioFile);
+    }
+
+
+
+    private boolean doStart() {
+        try {
+            //创建mediaRecorder
+            mediaRecorder = new MediaRecorder();
+            //创建录音文件
+            mAudioFile = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/MyDemo/" + System.currentTimeMillis() + ".wav");
+            System.out.println(getFilesDir() + "=====" + mAudioFile.getAbsolutePath());
+            String path = Environment.getExternalStorageDirectory().getAbsolutePath() + "/MyDemo/" + System.currentTimeMillis() + "/wav";
+            mAudioFile.getParentFile().mkdirs();
+            mAudioFile.createNewFile();
+            //配置Media Recorder
+            mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);//设置麦克风
+            mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+            mediaRecorder.setAudioChannels(2);
+            mediaRecorder.setAudioSamplingRate(44100);
+            mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+            mediaRecorder.setAudioEncodingBitRate(128000);
+            //设置录音文件的位置
+            mediaRecorder.setOutputFile(mAudioFile.getAbsolutePath());
+            //开始录音
+            mediaRecorder.prepare();
+            mediaRecorder.start();
+            //记录开始录音时间 用于统计时长
+            mStartRecordTime = System.currentTimeMillis();
+
+        } catch (IllegalStateException el) {
+            el.printStackTrace();
+            return false;
+        } catch (RuntimeException e) {
+            e.printStackTrace();
+            return false;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+
+
+        return true;
+    }
+
+    private boolean doStop() {
+        //停止录音
+        try {
+
+            if (mediaRecorder == null) {
+                Log.i("MainActivity", "stop失败，mediaRecorder为空");
+                return false;
+            }
+
+            mediaRecorder.stop();
+            //记录停止时间
+            mStopRecordTime = System.currentTimeMillis();
+            //只接受超过三秒的录音
+            final int second = (int) (mStopRecordTime - mStartRecordTime) / 1000;
+            if (second > 3) {
+                mainThreadHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        tvLog.setText("录制状态：录音成功" + second + "秒");
+                    }
+                });
+            }
+            //停止成功
+        } catch (IllegalStateException e) {
+            // TODO 如果当前java状态和jni里面的状态不一致，
+            //e.printStackTrace();
+            mediaRecorder = null;
+            mediaRecorder = new MediaRecorder();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+
+        return true;
+
+    }

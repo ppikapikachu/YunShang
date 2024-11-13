@@ -1,0 +1,4 @@
+1、getApplicationContext和Activity
+2、录制等待期间禁用录制
+3、popup高度自适应，不行就单用textview的isvisible，不用popup了
+4、
